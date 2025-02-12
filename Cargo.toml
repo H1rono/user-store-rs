@@ -1,5 +1,5 @@
 [package]
-name = "user-store-rs"
+name = "user-store"
 version = "0.1.0"
 edition = "2021"
 
