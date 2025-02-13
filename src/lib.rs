@@ -39,6 +39,10 @@ impl DataStore {
             return Ok(Err("Received invalid entry".to_string()));
         };
         let filename = self.base.join(&*entry.0);
+        let exists = filename.try_exists().context("Failed to search entry")?;
+        if !exists {
+            return Ok(Err("Entry not found".to_string()));
+        }
         let content =
             std::fs::read_to_string(filename).context("Failed to read from filesystem")?;
         let data =
