@@ -21,26 +21,29 @@ impl fmt::Display for Operation {
     }
 }
 
-fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<Result<(), String>> {
     let base = std::env::var("BASE_DIR").context("Failed to read BASE_DIR")?;
     let store = DataStore::new(base).context("Failed to initialize data store")?;
     let args: Vec<_> = std::env::args().collect();
     let proc = &args[0];
-    let operation = args
-        .get(1)
-        .with_context(|| format!("Usage: {proc} [read|write] <entry>"))?;
+    let usage = || format!("Usage: {proc} [read|write] <entry>");
+    let Some(operation) = args.get(1) else {
+        return Ok(Err(usage()));
+    };
     let operation = match operation.as_str() {
         "read" => Operation::Read,
         "write" => Operation::Write,
-        _ => anyhow::bail!("Usage: {proc} [read|write] <entry>"),
+        _ => return Ok(Err(usage())),
     };
-    let entry = args
-        .get(2)
-        .with_context(|| format!("Usage: {proc} {operation} <entry>"))?;
-    let entry = store.parse_entry(entry)?;
+    let Some(entry) = args.get(2) else {
+        return Ok(Err(format!("Usage: {proc} {operation} <entry>")));
+    };
     match operation {
         Operation::Read => {
-            let data = store.read(&entry)?;
+            let data = match store.read(entry)? {
+                Ok(d) => d,
+                Err(e) => return Ok(Err(e)),
+            };
             let data = serde_json::to_string(&data).context("Failed to serialize read data")?;
             println!("{data}");
         }
@@ -49,9 +52,15 @@ fn main() -> anyhow::Result<()> {
             std::io::stdin()
                 .read_to_string(&mut buf)
                 .context("Failed to read data from stdin")?;
-            let data = serde_json::from_str(&buf).context("Failed to deserialize data")?;
-            store.write(&entry, data)?;
+            let data = match serde_json::from_str(&buf) {
+                Ok(d) => d,
+                Err(e) => return Ok(Err(format!("Received invalid data: {e}"))),
+            };
+            match store.write(entry, data)? {
+                Ok(()) => {}
+                Err(e) => return Ok(Err(e)),
+            };
         }
     }
-    Ok(())
+    Ok(Ok(()))
 }
