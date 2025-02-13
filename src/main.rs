@@ -37,9 +37,10 @@ fn main() -> anyhow::Result<()> {
     let entry = args
         .get(2)
         .with_context(|| format!("Usage: {proc} {operation} <entry>"))?;
+    let entry = store.parse_entry(entry)?;
     match operation {
         Operation::Read => {
-            let data = store.read(entry)?;
+            let data = store.read(&entry)?;
             let data = serde_json::to_string(&data).context("Failed to serialize read data")?;
             println!("{data}");
         }
@@ -49,7 +50,7 @@ fn main() -> anyhow::Result<()> {
                 .read_to_string(&mut buf)
                 .context("Failed to read data from stdin")?;
             let data = serde_json::from_str(&buf).context("Failed to deserialize data")?;
-            store.write(entry, data)?;
+            store.write(&entry, data)?;
         }
     }
     Ok(())
