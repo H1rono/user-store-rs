@@ -38,30 +38,31 @@ impl DataStore {
         Some(ValidEntry(entry.into()))
     }
 
-    pub fn read(&self, entry: &str) -> anyhow::Result<Result<User, String>> {
-        let Some(entry) = self.parse_entry(entry) else {
-            return Ok(Err("Received invalid entry".to_string()));
-        };
+    pub fn read(&self, entry: &str) -> Result<User, Failure> {
+        let entry = self
+            .parse_entry(entry)
+            .ok_or_else(|| "Received invalid entry".to_string())?;
         let filename = self.base.join(&*entry.0);
         let exists = filename.try_exists().context("Failed to search entry")?;
         if !exists {
-            return Ok(Err("Entry not found".to_string()));
+            let error = "Entry not found".to_string();
+            return Err(error.into());
         }
         let content =
             std::fs::read_to_string(filename).context("Failed to read from filesystem")?;
         let data =
             serde_json::from_str(&content).context("Failed to deserialize data from filesystem")?;
-        Ok(Ok(data))
+        Ok(data)
     }
 
-    pub fn write(&self, entry: &str, data: User) -> anyhow::Result<Result<(), String>> {
-        let Some(entry) = self.parse_entry(entry) else {
-            return Ok(Err("Received invalid entry".to_string()));
-        };
+    pub fn write(&self, entry: &str, data: User) -> Result<(), Failure> {
+        let entry = self
+            .parse_entry(entry)
+            .ok_or_else(|| "Received invalid entry".to_string())?;
         let filename = self.base.join(&*entry.0);
         let content = serde_json::to_string(&data).context("Failed to serialize data")?;
         std::fs::write(filename, content)
             .context("Failed to write serialized data to filesystem")?;
-        Ok(Ok(()))
+        Ok(())
     }
 }
