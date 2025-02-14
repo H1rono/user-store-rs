@@ -1,6 +1,10 @@
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
+pub mod error;
+
+pub use error::Failure;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct User {
     pub name: String,
